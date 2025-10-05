@@ -1,26 +1,32 @@
 version: 0.2
 
+env:
+  variables:
+    AWS_DEFAULT_REGION: "us-east-1"
+    IMAGE_REPO_NAME: "lambda-docker-repo"
+    LAMBDA_FUNCTION_NAME: "lambda-docker-function"
+
 phases:
   pre_build:
     commands:
       - echo "Logging in to Amazon ECR..."
-      - aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 679029767004.dkr.ecr.us-east-1.amazonaws.com
-      - IMAGE_REPO=679029767004.dkr.ecr.us-east-1.amazonaws.com/pipeline-test
+      - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin 679029767004.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com
+      - IMAGE_REPO=679029767004.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$IMAGE_REPO_NAME
       - TAG=${CODEBUILD_RESOLVED_SOURCE_VERSION}
+
   build:
     commands:
-      - echo "Building the Docker image..."
+      - echo "Building Docker image..."
       - docker build -t $IMAGE_REPO:$TAG .
+      - echo "Pushing image to ECR..."
       - docker push $IMAGE_REPO:$TAG
+
   post_build:
     commands:
-      - echo "Writing image definitions..."
-      - printf '[{"name":"app-container","imageUri":"%s"}]' $IMAGE_REPO:$TAG > imagedefinitions.json
-      - echo $TAG > imageDetail.txt
+      - echo "Updating Lambda with new image..."
+      - aws lambda update-function-code --function-name $LAMBDA_FUNCTION_NAME --image-uri $IMAGE_REPO:$TAG
+      - echo "Build and Deploy completed successfully!"
 
 artifacts:
   files:
     - imagedefinitions.json
-    - imageDetail.txt
-    - appspec.yml
-    - scripts/*

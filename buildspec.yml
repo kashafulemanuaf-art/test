@@ -5,7 +5,7 @@ phases:
     commands:
       - echo "Logging in to Amazon ECR..."
       - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin 679029767004.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com
-      - IMAGE_REPO=679029767004.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/pipeline-test
+      - IMAGE_REPO=679029767004.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/lambda-docker-repo
       - TAG=${CODEBUILD_RESOLVED_SOURCE_VERSION}
   build:
     commands:
@@ -17,10 +17,10 @@ phases:
       - echo "Deploying to Lambda..."
       # Check if Lambda already exists
       - |
-        if aws lambda get-function --function-name kashaf-lambda > /dev/null 2>&1; then
+        if aws lambda get-function --function-name lambda-docker-function > /dev/null 2>&1; then
           echo "Updating existing Lambda function..."
           aws lambda update-function-code \
-            --function-name kashaf-lambda \
+            --function-name lambda-docker-function \
             --image-uri $IMAGE_REPO:$TAG
         else
           echo "Creating new Lambda function..."
@@ -36,3 +36,4 @@ phases:
 artifacts:
   files:
     - imagedefinitions.json
+
